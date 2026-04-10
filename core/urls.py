@@ -16,9 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from auth_app.views import EmailCheckView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('auth_app.urls')),
     path('api/boards/', include('board_app.urls')),
+    path('api/tasks/', include('tasks_app.urls')),
+    path('api/email-check/', EmailCheckView.as_view()),
 ]
