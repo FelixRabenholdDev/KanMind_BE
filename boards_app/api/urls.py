@@ -1,7 +1,7 @@
-from django.urls import path
-from . import views
+from rest_framework.routers import DefaultRouter
+from .views import BoardViewSet
 
-urlpatterns = [
-    path('', views.BoardListView.as_view()),
-    path('<int:pk>/', views.BoardDetailView.as_view()),
-]
+router = DefaultRouter()
+router.register(r"", BoardViewSet, basename="boards")
+
+urlpatterns = router.urls
