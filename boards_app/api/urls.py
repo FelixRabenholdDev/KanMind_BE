@@ -1,7 +1,7 @@
-from django.urls import path, include
+from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.BoardListView),
-    path('<int:pk>/', views.BoardDetailView),
+    path('', views.BoardListView.as_view()),
+    path('<int:pk>/', views.BoardDetailView.as_view()),
 ]

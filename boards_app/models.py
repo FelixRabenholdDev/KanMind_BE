@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.conf import settings
 
 class User(AbstractUser):
     fullname = models.CharField(max_length=255)
@@ -10,15 +11,15 @@ class User(AbstractUser):
 
 class Board(models.Model):
     title = models.CharField(max_length=255)
-    owner = models.ForeignKey(User, through='BoardMember', related_name='boards')
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='owner_boards')
 
-    members = models.ManyToManyField(User, through="BoardMember", related_name="boards")
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, through="BoardMember", related_name="boards")
 
     created_at = models.DateTimeField(auto_now_add=True)
 
 class BoardMember(models.Model):
     board = models.ForeignKey(Board, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ('board', 'user')
@@ -45,9 +46,9 @@ class Task(models.Model):
 
     priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
 
-    assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_tasks")
+    assignee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_tasks")
 
-    reviewer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="review_tasks")
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="review_tasks")
 
     due_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -55,7 +56,7 @@ class Task(models.Model):
 class Comment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="comments")
 
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
