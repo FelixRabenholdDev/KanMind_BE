@@ -1,4 +1,4 @@
-from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -11,7 +11,7 @@ from .serializers import RegistrationSerializer, LoginSerializer
 
 User = get_user_model()
 
-class EmailCheckView(APIView):
+class EmailCheckView(GenericAPIView):
     def get(self, request):
         try:
             if not request.user or not request.user.is_authenticated:
@@ -40,12 +40,13 @@ class EmailCheckView(APIView):
         except Exception:
             return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-class LoginView(APIView):
+class LoginView(GenericAPIView):
+    serializer_class = LoginSerializer
     permission_classes = [AllowAny]
 
     def post(self, request):
         try:
-            serializer = LoginSerializer(data=request.data)
+            serializer = self.get_serializer(data=request.data)
 
             if serializer.is_valid():
                 email = serializer.validated_data["email"]
@@ -73,12 +74,13 @@ class LoginView(APIView):
         except Exception:
             return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class RegistrationView(APIView):
+class RegistrationView(GenericAPIView):
+    serializer_class = RegistrationSerializer
     permission_classes = [AllowAny]
 
     def post(self, request):
         try:    
-            serializer = RegistrationSerializer(data=request.data)
+            serializer = self.get_serializer(data=request.data)
 
             if serializer.is_valid():
                 user = serializer.save()
