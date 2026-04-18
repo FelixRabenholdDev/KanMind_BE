@@ -61,11 +61,7 @@ class BoardDetailSerializer(serializers.ModelSerializer):
         ]
 
 class BoardCreateSerializer(serializers.ModelSerializer):
-    members = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=User.objects.all(),
-        required=False
-    )
+    members = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all(), write_only=True)
 
     class Meta:
         model = Board
@@ -73,7 +69,6 @@ class BoardCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         members = validated_data.pop("members", [])
-
         request = self.context["request"]
 
         board = Board.objects.create(
@@ -81,9 +76,6 @@ class BoardCreateSerializer(serializers.ModelSerializer):
             owner=request.user
         )
 
-        board.members.add(request.user)
-
-        for user in members:
-            board.members.add(user)
+        board.members.set([request.user, *members])
 
         return board
