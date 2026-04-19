@@ -213,3 +213,80 @@ class TaskDetailView(APIView):
 
         task.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class TaskCommentsView(APIView):
+    permission_classes = [IsBoardMemberForTask]
+
+    def get_task(self, task_id):
+        return get_object_or_404(Task, id=task_id)
+
+    def get(self, request, task_id):
+        task = self.get_task(task_id)
+        self.check_object_permissions(request, task)
+
+        comments = Comment.objects.filter(task=task).order_by("created_at")
+
+        return Response([
+            {
+                "id": c.id,
+                "created_at": c.created_at,
+                "author": c.author.fullname,
+                "content": c.content
+            }
+            for c in comments
+        ])
+
+    def post(self, request, task_id):
+        task = self.get_task(task_id)
+        self.check_object_permissions(request, task)
+
+        content = request.data.get("content", "").strip()
+
+        if not content:
+            return Response({"error": "Content required"}, status=400)
+
+        comment = Comment.objects.create(
+            task=task,
+            author=request.user,
+            content=content
+        )
+
+        return Response({
+            "id": comment.id,
+            "created_at": comment.created_at,
+            "author": request.user.fullname,
+            "content": comment.content
+        }, status=201)
+    
+class TaskCommentDeleteView(APIView):
+    permission_classes = [IsBoardMemberForTask]
+
+    def get_task(self, task_id):
+        return get_object_or_404(Task, id=task_id)
+
+    def get_comment(self, task, comment_id):
+        return get_object_or_404(
+            Comment,
+            id=comment_id,
+            task=task
+        )
+
+    def delete(self, request, task_id, comment_id):
+        task = self.get_task(task_id)
+
+        self.check_object_permissions(request, task)
+
+        comment = self.get_comment(task, comment_id)
+
+        if request.user.is_superuser:
+            return True
+
+        if comment.author != request.user:
+            return Response(
+                {"error": "Only comment author or admin can delete this comment"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        comment.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
