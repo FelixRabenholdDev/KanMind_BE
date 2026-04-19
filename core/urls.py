@@ -22,7 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
     path('api/', include('auth_app.api.urls')),
-    path('api/boards/', include('boards_app.api.urls')),
-    path('api/tasks/', include('boards_app.api.urls')),
+    path('api/boards/', include('boards_app.api.boards_urls')),
+    path('api/tasks/', include('boards_app.api.tasks_urls')),
     path('api/email-check/', EmailCheckView.as_view(), name="email-check"),
 ]

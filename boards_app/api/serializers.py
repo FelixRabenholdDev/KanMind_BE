@@ -79,3 +79,105 @@ class BoardCreateSerializer(serializers.ModelSerializer):
         board.members.set([request.user, *members])
 
         return board
+    
+class TaskCreateSerializer(serializers.ModelSerializer):
+    assignee_id = serializers.IntegerField(required=False, allow_null=True)
+    reviewer_id = serializers.IntegerField(required=False, allow_null=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            "board",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assignee_id",
+            "reviewer_id",
+            "due_date",
+        ]
+
+    def validate(self, data):
+        request = self.context["request"]
+        user = request.user
+
+        board = data["board"]
+
+        if not (board.owner == user or board.members.filter(id=user.id).exists()):
+            raise serializers.ValidationError("Not a member of this board.")
+
+        if data["status"] not in ["to-do", "in-progress", "review", "done"]:
+            raise serializers.ValidationError("Invalid status.")
+
+        if data["priority"] not in ["low", "medium", "high"]:
+            raise serializers.ValidationError("Invalid priority.")
+
+        return data
+
+    def create(self, validated_data):
+        assignee_id = validated_data.pop("assignee_id", None)
+        reviewer_id = validated_data.pop("reviewer_id", None)
+
+        board = validated_data["board"]
+
+        assignee = None
+        reviewer = None
+
+        if assignee_id:
+            assignee = User.objects.filter(id=assignee_id).first()
+            if not board.members.filter(id=assignee_id).exists():
+                raise serializers.ValidationError("Assignee must be board member.")
+
+        if reviewer_id:
+            reviewer = User.objects.filter(id=reviewer_id).first()
+            if not board.members.filter(id=reviewer_id).exists():
+                raise serializers.ValidationError("Reviewer must be board member.")
+
+        task = Task.objects.create(
+            assignee=assignee,
+            reviewer=reviewer,
+            **validated_data
+        )
+
+        return task
+    
+class TaskSerializer(serializers.ModelSerializer):
+    assignee = serializers.SerializerMethodField()
+    reviewer = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "board",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "assignee",
+            "reviewer",
+            "due_date",
+            "comments_count",
+        ]
+
+    def get_assignee(self, obj):
+        if not obj.assignee:
+            return None
+        return {
+            "id": obj.assignee.id,
+            "email": obj.assignee.email,
+            "fullname": obj.assignee.fullname,
+        }
+
+    def get_reviewer(self, obj):
+        if not obj.reviewer:
+            return None
+        return {
+            "id": obj.reviewer.id,
+            "email": obj.reviewer.email,
+            "fullname": obj.reviewer.fullname,
+        }
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()

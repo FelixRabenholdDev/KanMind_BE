@@ -21,3 +21,20 @@ class IsBoardOwnerOrMemberOrSuperuser(BasePermission):
             )
 
         return False
+    
+class IsBoardMemberForTask(BasePermission):
+
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        board = obj.board
+
+        if user.is_superuser:
+            return True
+
+        return (
+            board.owner_id == user.id
+            or board.members.filter(id=user.id).exists()
+        )
