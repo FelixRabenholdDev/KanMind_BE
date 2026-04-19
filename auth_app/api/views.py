@@ -1,44 +1,25 @@
+from django.contrib.auth import get_user_model
+from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
-from django.core.validators import validate_email
-from django.core.exceptions import ValidationError
-from django.contrib.auth import get_user_model
+from rest_framework.permissions import IsAuthenticated
 
 from .serializers import RegistrationSerializer, LoginSerializer
+from boards_app.api.serializers import UserMiniSerializer
 
 User = get_user_model()
 
-class EmailCheckView(GenericAPIView):
-    def get(self, request):
-        try:
-            if not request.user or not request.user.is_authenticated:
-                return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
-            
-            email = request.query_params.get("email")
-        
-            if not email:
-                return Response({"error": "Email parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            try:
-                validate_email(email)
-            except ValidationError:
-                return Response({"error": "Invalid email format"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            user = User.objects.filter(email=email).first()
-            if not user:
-                return Response({"error": "Email not found"}, status=status.HTTP_404_NOT_FOUND)
+class EmailCheckView(APIView):
+    permission_classes = [IsAuthenticated]
 
-            return Response({
-                "id": user.id,
-                "email": user.email,
-                "fullname": user.fullname
-            }, status=status.HTTP_200_OK)
-        
-        except Exception:
-            return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def get(self, request):
+        return Response(
+            UserMiniSerializer(request.user).data,
+            status=status.HTTP_200_OK
+        )
     
 class LoginView(GenericAPIView):
     serializer_class = LoginSerializer
