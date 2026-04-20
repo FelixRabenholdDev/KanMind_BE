@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 class IsBoardOwnerOrMemberOrSuperuser(BasePermission):
 
@@ -14,7 +14,7 @@ class IsBoardOwnerOrMemberOrSuperuser(BasePermission):
         if request.method == "DELETE":
             return obj.owner_id == user.id
 
-        if request.method in ["GET", "PATCH"]:
+        if request.method in SAFE_METHODS or request.method == "PATCH":
             return (
                 obj.owner_id == user.id
                 or obj.members.filter(id=user.id).exists()

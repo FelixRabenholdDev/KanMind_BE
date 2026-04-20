@@ -49,22 +49,25 @@ class BoardViewSet(ModelViewSet):
 
         return qs
     
-    def perform_create(self, serializer):
-        board = serializer.save(owner=self.request.user)
-        board.members.add(self.request.user)
-
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        board = serializer.save(owner=request.user)
-        board.members.add(request.user)
+        board = serializer.save()
 
-        board = self.get_queryset().get(pk=board.pk)
+        board = self.get_annotated_queryset(Board.objects.filter(pk=board.pk)).first()
 
-        output = BoardListSerializer(board, context={"request": request})
+        output = {
+        "id": board.id,
+        "title": board.title,
+        "member_count": board.member_count,
+        "ticket_count": board.ticket_count,
+        "tasks_to_do_count": board.tasks_to_do_count,
+        "tasks_high_prio_count": board.tasks_high_prio_count,
+        "owner_id": board.owner_id,
+        }
 
-        return Response(output.data, status=status.HTTP_201_CREATED)
+        return Response(output, status=status.HTTP_201_CREATED)
     
     def partial_update(self, request, *args, **kwargs):
         board = self.get_object()
@@ -101,15 +104,14 @@ class BoardViewSet(ModelViewSet):
         return Response(output, status=status.HTTP_200_OK)
 
 class TaskFilteredView(APIView):
+
     def get(self, request):
         user = request.user
-        f = request.query_params.get("filter")
-
         qs = Task.objects.all()
 
-        if f == "assigned":
+        if "assigned" in request.path:
             qs = qs.filter(assignee=user)
-        elif f == "reviewing":
+        elif "reviewing" in request.path:
             qs = qs.filter(reviewer=user)
 
         serializer = TaskSerializer(qs, many=True)

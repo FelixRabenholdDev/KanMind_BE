@@ -13,11 +13,26 @@ from boards_app.api.serializers import UserMiniSerializer
 User = get_user_model()
 
 class EmailCheckView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        email = request.query_params.get("email")
+
+        if not email:
+            return Response(
+                {"detail": "Email is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Email not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         return Response(
-            UserMiniSerializer(request.user).data,
+            UserMiniSerializer(user).data,
             status=status.HTTP_200_OK
         )
     
