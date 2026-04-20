@@ -1,3 +1,10 @@
+"""
+URL configuration for authentication endpoints.
+
+This module defines the URL routes for user authentication,
+including registration and login views.
+"""
+
 from django.urls import path
 
 from .views import RegistrationView, LoginView

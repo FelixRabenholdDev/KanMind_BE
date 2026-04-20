@@ -1,7 +1,24 @@
+"""
+Serializers for boards and tasks.
+
+This module defines serializers used for:
+- board listing and detail views
+- board creation
+- task creation and representation
+- lightweight user representation
+"""
+
 from rest_framework import serializers
 from boards_app.models import Board, Task, User
 
 class BoardListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for board list view.
+
+    Provides aggregated board statistics such as member count
+    and task-related metrics.
+    """
+
     member_count = serializers.IntegerField(read_only=True)
     ticket_count = serializers.IntegerField(read_only=True)
     tasks_to_do_count = serializers.IntegerField(read_only=True)
@@ -9,6 +26,10 @@ class BoardListSerializer(serializers.ModelSerializer):
     owner_id = serializers.IntegerField(source="owner.id", read_only=True)
 
     class Meta:
+        """
+        Meta options for BoardListSerializer.
+        """
+
         model = Board
         fields = [
             "id",
@@ -21,16 +42,36 @@ class BoardListSerializer(serializers.ModelSerializer):
         ]
 
 class UserMiniSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for user representation.
+
+    Used in nested relations where only basic user information is required.
+    """
+
     class Meta:
+        """
+        Meta options for UserMiniSerializer.
+        """
+
         model = User
         fields = ["id", "email", "fullname"]
 
 class BoardTaskSerializer(serializers.ModelSerializer):
+    """
+    Serializer for tasks inside board detail view.
+
+    Includes nested assignee/reviewer information and comment count.
+    """
+
     assignee = UserMiniSerializer(read_only=True)
     reviewer = UserMiniSerializer(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
 
     class Meta:
+        """
+        Meta options for BoardTaskSerializer.
+        """
+
         model = Task
         fields = [
             "id",
@@ -45,12 +86,22 @@ class BoardTaskSerializer(serializers.ModelSerializer):
         ]
 
 class BoardDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for detailed board view.
+
+    Includes members and all related tasks.
+    """
+
     owner_id = serializers.IntegerField(source="owner.id", read_only=True)
 
     members = UserMiniSerializer(many=True, read_only=True)
     tasks = BoardTaskSerializer(many=True, read_only=True)
 
     class Meta:
+        """
+        Meta options for BoardDetailSerializer.
+        """
+
         model = Board
         fields = [
             "id",
@@ -61,13 +112,33 @@ class BoardDetailSerializer(serializers.ModelSerializer):
         ]
 
 class BoardCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating boards.
+
+    Automatically assigns the requesting user as owner and member.
+    """
+
     members = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all(), write_only=True)
 
     class Meta:
+        """
+        Meta options for BoardCreateSerializer.
+        """
+
         model = Board
         fields = ["title", "members"]
 
     def create(self, validated_data):
+        """
+        Create a new board and assign members.
+
+        Args:
+            validated_data (dict): Validated input data.
+
+        Returns:
+            Board: Newly created board instance.
+        """
+
         members = validated_data.pop("members", [])
         request = self.context["request"]
 
@@ -81,10 +152,21 @@ class BoardCreateSerializer(serializers.ModelSerializer):
         return board
     
 class TaskCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating tasks.
+
+    Validates board membership and ensures assignee/reviewer
+    are valid board members.
+    """
+
     assignee_id = serializers.IntegerField(required=False, allow_null=True)
     reviewer_id = serializers.IntegerField(required=False, allow_null=True)
 
     class Meta:
+        """
+        Meta options for TaskCreateSerializer.
+        """
+
         model = Task
         fields = [
             "board",
@@ -98,6 +180,23 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
+        """
+        Validate task creation constraints.
+
+        Ensures:
+        - user is member of board
+        - status and priority values are valid
+
+        Args:
+            data (dict): Input data.
+
+        Returns:
+            dict: Validated data.
+
+        Raises:
+            serializers.ValidationError: If validation fails.
+        """
+
         request = self.context["request"]
         user = request.user
 
@@ -115,6 +214,18 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        """
+        Create a new task instance.
+
+        Ensures assignee and reviewer are valid board members.
+
+        Args:
+            validated_data (dict): Cleaned input data.
+
+        Returns:
+            Task: Created task instance.
+        """
+
         assignee_id = validated_data.pop("assignee_id", None)
         reviewer_id = validated_data.pop("reviewer_id", None)
 
@@ -142,11 +253,21 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         return task
     
 class TaskSerializer(serializers.ModelSerializer):
+    """
+    Serializer for task detail representation.
+
+    Provides nested user information and computed comment count.
+    """
+
     assignee = serializers.SerializerMethodField()
     reviewer = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
 
     class Meta:
+        """
+        Meta options for TaskSerializer.
+        """
+
         model = Task
         fields = [
             "id",
@@ -162,6 +283,16 @@ class TaskSerializer(serializers.ModelSerializer):
         ]
 
     def get_assignee(self, obj):
+        """
+        Return serialized assignee data.
+
+        Args:
+            obj (Task): Task instance.
+
+        Returns:
+            dict | None: Assignee data or None.
+        """
+
         if not obj.assignee:
             return None
         return {
@@ -171,6 +302,16 @@ class TaskSerializer(serializers.ModelSerializer):
         }
 
     def get_reviewer(self, obj):
+        """
+        Return serialized reviewer data.
+
+        Args:
+            obj (Task): Task instance.
+
+        Returns:
+            dict | None: Reviewer data or None.
+        """
+
         if not obj.reviewer:
             return None
         return {
@@ -180,4 +321,14 @@ class TaskSerializer(serializers.ModelSerializer):
         }
 
     def get_comments_count(self, obj):
+        """
+        Return number of comments for the task.
+
+        Args:
+            obj (Task): Task instance.
+
+        Returns:
+            int: Number of related comments.
+        """
+        
         return obj.comments.count()

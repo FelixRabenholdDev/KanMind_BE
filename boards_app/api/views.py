@@ -1,3 +1,12 @@
+"""
+API views for boards, tasks, and comments.
+
+This module contains view logic for:
+- board management (CRUD with annotations and membership rules)
+- task filtering, creation, and detail operations
+- comment creation and deletion on tasks
+"""
+
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
@@ -14,11 +23,23 @@ from .permissions import IsBoardOwnerOrMemberOrSuperuser, IsBoardMemberForTask
 User = get_user_model()
 
 class BoardViewSet(ModelViewSet):
+    """
+    ViewSet for managing boards.
+
+    Supports listing, retrieving, creating, updating, and deleting boards
+    with annotation-based statistics and permission checks.
+    """
 
     permission_classes = [IsBoardOwnerOrMemberOrSuperuser]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_serializer_class(self):
+        """
+        Return appropriate serializer based on action.
+
+        Returns:
+            Serializer class
+        """
         if self.action == "create":
             return BoardCreateSerializer
         if self.action == "retrieve":
@@ -28,6 +49,15 @@ class BoardViewSet(ModelViewSet):
         return BoardListSerializer
     
     def get_annotated_queryset(self, qs):
+        """
+        Annotate queryset with board statistics.
+
+        Args:
+            qs (QuerySet): Base queryset
+
+        Returns:
+            QuerySet: Annotated queryset
+        """
         return qs.annotate(
             member_count=Count("members", distinct=True),
             ticket_count=Count("tasks", distinct=True),
@@ -36,6 +66,12 @@ class BoardViewSet(ModelViewSet):
         )
     
     def get_queryset(self):
+        """
+        Return filtered queryset depending on user and action.
+
+        Returns:
+            QuerySet: Boards accessible to the user
+        """
         user = self.request.user
         qs = Board.objects.all()
 
@@ -50,6 +86,12 @@ class BoardViewSet(ModelViewSet):
         return qs
     
     def create(self, request, *args, **kwargs):
+        """
+        Create a new board.
+
+        Returns:
+            Response: Created board data
+        """
         serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
@@ -70,6 +112,12 @@ class BoardViewSet(ModelViewSet):
         return Response(output, status=status.HTTP_201_CREATED)
     
     def partial_update(self, request, *args, **kwargs):
+        """
+        Partially update a board.
+
+        Returns:
+            Response: Updated board data
+        """
         board = self.get_object()
 
         serializer = self.get_serializer(board, data=request.data, partial=True, context={"request": request})
@@ -104,8 +152,17 @@ class BoardViewSet(ModelViewSet):
         return Response(output, status=status.HTTP_200_OK)
 
 class TaskFilteredView(APIView):
+    """
+    API view for filtering tasks based on user role (assignee/reviewer).
+    """
 
     def get(self, request):
+        """
+        Return tasks filtered by request path.
+
+        Returns:
+            Response: List of serialized tasks
+        """
         user = request.user
         qs = Task.objects.all()
 
@@ -118,8 +175,17 @@ class TaskFilteredView(APIView):
         return Response(serializer.data)
 
 class TaskCreateView(APIView):
+    """
+    API view for creating tasks.
+    """
 
     def post(self, request):
+        """
+        Create a new task.
+
+        Returns:
+            Response: Created task data
+        """
         serializer = TaskCreateSerializer(
             data=request.data,
             context={"request": request}
@@ -133,15 +199,34 @@ class TaskCreateView(APIView):
         return Response(output.data, status=status.HTTP_201_CREATED)
     
 class TaskDetailView(APIView):
+    """
+    API view for retrieving, updating, and deleting a task.
+    """
+
     permission_classes = [IsBoardMemberForTask]
 
     def get_object(self, task_id):
+        """
+        Retrieve a task instance.
+
+        Args:
+            task_id (int): Task ID
+
+        Returns:
+            Task: Task instance
+        """
         return get_object_or_404(
             Task.objects.select_related("board", "assignee", "reviewer"),
             id=task_id
         )
 
     def patch(self, request, task_id):
+        """
+        Partially update a task.
+
+        Returns:
+            Response: Updated task data
+        """
         task = self.get_object(task_id)
 
         self.check_object_permissions(request, task)
@@ -197,6 +282,12 @@ class TaskDetailView(APIView):
         return Response(TaskSerializer(task).data, status=status.HTTP_200_OK)
 
     def delete(self, request, task_id):
+        """
+        Delete a task (only allowed for board owner).
+
+        Returns:
+            Response: Empty response on success
+        """
         if not str(task_id).isdigit():
             return Response(
                 {"error": "Invalid task id"},
@@ -217,12 +308,27 @@ class TaskDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class TaskCommentsView(APIView):
+    """
+    API view for listing and creating comments on a task.
+    """
     permission_classes = [IsBoardMemberForTask]
 
     def get_task(self, task_id):
+        """
+        Retrieve task instance.
+
+        Returns:
+            Task
+        """
         return get_object_or_404(Task, id=task_id)
 
     def get(self, request, task_id):
+        """
+        List comments for a task.
+
+        Returns:
+            Response: List of comments
+        """
         task = self.get_task(task_id)
         self.check_object_permissions(request, task)
 
@@ -239,6 +345,12 @@ class TaskCommentsView(APIView):
         ])
 
     def post(self, request, task_id):
+        """
+        Create a comment on a task.
+
+        Returns:
+            Response: Created comment data
+        """
         task = self.get_task(task_id)
         self.check_object_permissions(request, task)
 
@@ -261,12 +373,24 @@ class TaskCommentsView(APIView):
         }, status=201)
     
 class TaskCommentDeleteView(APIView):
+    """
+    API view for deleting comments from a task.
+    """
     permission_classes = [IsBoardMemberForTask]
 
     def get_task(self, task_id):
+        """
+        Retrieve task instance.
+        """
         return get_object_or_404(Task, id=task_id)
 
     def get_comment(self, task, comment_id):
+        """
+        Retrieve comment instance.
+
+        Returns:
+            Comment
+        """
         return get_object_or_404(
             Comment,
             id=comment_id,
@@ -274,6 +398,12 @@ class TaskCommentDeleteView(APIView):
         )
 
     def delete(self, request, task_id, comment_id):
+        """
+        Delete a comment.
+
+        Returns:
+            Response: Empty response on success
+        """
         task = self.get_task(task_id)
 
         self.check_object_permissions(request, task)

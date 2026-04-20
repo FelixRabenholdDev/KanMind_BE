@@ -1,3 +1,12 @@
+"""
+API views for authentication and user-related operations.
+
+This module provides endpoints for:
+- user login
+- user registration
+- email existence checks
+"""
+
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
@@ -13,8 +22,23 @@ from boards_app.api.serializers import UserMiniSerializer
 User = get_user_model()
 
 class EmailCheckView(APIView):
+    """
+    API view to check whether a user exists by email.
+
+    Returns a minimal user representation if the email exists,
+    otherwise returns an error response.
+    """
 
     def get(self, request):
+        """
+        Handle GET request to check email existence.
+
+        Args:
+            request (Request): Incoming HTTP request containing query params.
+
+        Returns:
+            Response: User data if found, otherwise error message.
+        """
         email = request.query_params.get("email")
 
         if not email:
@@ -37,10 +61,26 @@ class EmailCheckView(APIView):
         )
     
 class LoginView(GenericAPIView):
+    """
+    API view for user authentication.
+
+    Validates user credentials and returns an authentication token
+    along with basic user information.
+    """
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
 
     def post(self, request):
+        """
+        Handle user login request.
+
+        Args:
+            request (Request): Incoming HTTP request with login data.
+
+        Returns:
+            Response: Token and user data if authentication succeeds,
+                      otherwise error response.
+        """
         try:
             serializer = self.get_serializer(data=request.data)
 
@@ -71,10 +111,26 @@ class LoginView(GenericAPIView):
             return Response({"error": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class RegistrationView(GenericAPIView):
+    """
+    API view for user registration.
+
+    Creates a new user and returns an authentication token
+    along with basic user information.
+    """
     serializer_class = RegistrationSerializer
     permission_classes = [AllowAny]
 
     def post(self, request):
+        """
+        Handle user registration request.
+
+        Args:
+            request (Request): Incoming HTTP request with registration data.
+
+        Returns:
+            Response: Token and user data if registration succeeds,
+                      otherwise error response.
+        """
         try:    
             serializer = self.get_serializer(data=request.data)
 
