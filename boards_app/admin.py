@@ -59,8 +59,8 @@ class BoardAdmin(admin.ModelAdmin):
     of related Task objects.
     """
 
-    list_display = ("name", "owner")
-    search_fields = ("name",)
+    list_display = ("title", "owner")
+    search_fields = ("title",)
     inlines = [TaskInline]
 
 @admin.register(Task)
@@ -71,7 +71,7 @@ class TaskAdmin(admin.ModelAdmin):
     Provides filtering and search capabilities for tasks
     across boards and completion status.
     """
-    
-    list_display = ("title", "board", "done")
-    list_filter = ("done", "board")
+
+    list_display = ("title", "board", "status")
+    list_filter = ("status", "board")
     search_fields = ("title", "description")
