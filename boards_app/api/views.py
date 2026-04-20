@@ -186,9 +186,15 @@ class TaskCreateView(APIView):
         Returns:
             Response: Created task data
         """
+
+        board_id = request.data.get("board")
+        board = get_object_or_404(Board, pk=board_id)
+
         serializer = TaskCreateSerializer(
             data=request.data,
-            context={"request": request}
+            context={"request": request, 
+                     "board": board
+                }
         )
 
         serializer.is_valid(raise_exception=True)

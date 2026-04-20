@@ -201,7 +201,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         request = self.context["request"]
         user = request.user
 
-        board = data["board"]
+        board = self.context["board"]
 
         if not board:
             raise NotFound("Board not found.")
@@ -233,7 +233,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         assignee_id = validated_data.pop("assignee_id", None)
         reviewer_id = validated_data.pop("reviewer_id", None)
 
-        board = validated_data["board"]
+        board = self.context["board"]
 
         assignee = None
         reviewer = None
@@ -249,6 +249,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
                 raise PermissionDenied("Reviewer must be board member.")
 
         task = Task.objects.create(
+            board=board,
             assignee=assignee,
             reviewer=reviewer,
             **validated_data
