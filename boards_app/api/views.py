@@ -75,7 +75,7 @@ class BoardViewSet(ModelViewSet):
         user = self.request.user
         qs = Board.objects.all()
 
-        if not user.is_superuser:
+        if self.action == "list" and not user.is_superuser:
             qs = qs.filter(
                 Q(owner=user) | Q(members=user)
             ).distinct()

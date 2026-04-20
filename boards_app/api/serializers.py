@@ -9,6 +9,7 @@ This module defines serializers used for:
 """
 
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied, NotFound
 from boards_app.models import Board, Task, User
 
 class BoardListSerializer(serializers.ModelSerializer):
@@ -153,7 +154,7 @@ class BoardCreateSerializer(serializers.ModelSerializer):
     
 class TaskCreateSerializer(serializers.ModelSerializer):
     """
-    Serializer for creating tasks.
+    Serialize task creation requests.
 
     Validates board membership and ensures assignee/reviewer
     are valid board members.
@@ -188,10 +189,10 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         - status and priority values are valid
 
         Args:
-            data (dict): Input data.
+            data (dict): Incoming validated or partially validated task data.
 
         Returns:
-            dict: Validated data.
+            dict: The validated task data.
 
         Raises:
             serializers.ValidationError: If validation fails.
@@ -202,8 +203,11 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
         board = data["board"]
 
+        if not board:
+            raise NotFound("Board not found.")
+
         if not (board.owner == user or board.members.filter(id=user.id).exists()):
-            raise serializers.ValidationError("Not a member of this board.")
+            raise PermissionDenied("Not a member of this board.")
 
         if data["status"] not in ["to-do", "in-progress", "review", "done"]:
             raise serializers.ValidationError("Invalid status.")
@@ -237,12 +241,12 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         if assignee_id:
             assignee = User.objects.filter(id=assignee_id).first()
             if not board.members.filter(id=assignee_id).exists():
-                raise serializers.ValidationError("Assignee must be board member.")
+                raise PermissionDenied("Assignee must be board member.")
 
         if reviewer_id:
             reviewer = User.objects.filter(id=reviewer_id).first()
             if not board.members.filter(id=reviewer_id).exists():
-                raise serializers.ValidationError("Reviewer must be board member.")
+                raise PermissionDenied("Reviewer must be board member.")
 
         task = Task.objects.create(
             assignee=assignee,
