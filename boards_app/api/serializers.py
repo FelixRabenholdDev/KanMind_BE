@@ -160,6 +160,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
     are valid board members.
     """
 
+    serializers.IntegerField(write_only=True)
     assignee_id = serializers.IntegerField(required=False, allow_null=True)
     reviewer_id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -232,6 +233,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
         assignee_id = validated_data.pop("assignee_id", None)
         reviewer_id = validated_data.pop("reviewer_id", None)
+        validated_data.pop("board", None)
 
         board = self.context["board"]
 
