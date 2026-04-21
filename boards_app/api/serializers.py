@@ -160,7 +160,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
     are valid board members.
     """
 
-    serializers.IntegerField(write_only=True)
+    board = serializers.IntegerField(write_only=True)
     assignee_id = serializers.IntegerField(required=False, allow_null=True)
     reviewer_id = serializers.IntegerField(required=False, allow_null=True)
 
